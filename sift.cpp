@@ -9,16 +9,18 @@ using namespace cv;
 int main()
 {
     string file1, file2;
-    cin >> file1 >> file2;
+
+
+
+    //cin >> file1 >> file2;
+
+    // Mat orig1 = imread(file1);
+    // Mat orig2 = imread(file2);// 原始文件
+
+    Mat orig1 = imread("5.jpg");
+    Mat orig2 = imread("6.jpg");
 
     clock_t t1 = clock();
-
-    Mat orig1 = imread(file1);
-    Mat orig2 = imread(file2);// 原始文件
-
-    // Mat orig1 = imread("1.jpg");
-    // Mat orig2 = imread("2.jpg");
-
     const int area = 100;//重叠部分大小
 
     // 取左图右侧area部分
@@ -70,17 +72,19 @@ int main()
             index++;
         }
     }
+
+    sort(matches.begin(), matches.end());
+
+
+
+
     //dx, dy 为各特征点对的差的均值
     dx /= (index-1);
     dy /= (index-1);
 
     cout << "dx: " << dx << "\tdy:" << dy <<endl;
 
-    // define the size of result
-    int nrow = orig1.rows - abs(dy);
-    int ncol = orig1.cols + orig2.cols - abs(dx);
 
-    Mat newimg(nrow, ncol, orig1.type());
     Mat roi1, roi2;
 
     if( dy > 0){
@@ -93,16 +97,43 @@ int main()
 
     // 重合部分取平均
     // roi2 减半，加上roi1的一半
-    roi2(Rect(Point(0, 0), Point(dx, roi2.rows))) *= 0.5;
-    roi2(Rect(Point(0, 0), Point(dx, roi2.rows))) +=
-       roi1(Rect(Point(roi1.cols - abs(dx), 0), Point(roi1.cols, roi1.rows))) * 0.5;
+    Mat f1 = roi2(Rect(Point(0, 0), Point(dx, roi2.rows)));
+    Mat f2 = roi1(Rect(Point(roi1.cols - abs(dx), 0), Point(roi1.cols, roi1.rows)));
+    for(double i = 0; i < f1.cols; i++){
+        double scale = (i+1)/f1.cols;
+        Mat t;
+        t = f1.col(i).clone();
+        t *= scale;
+        t.copyTo(f1.col(i));
+        //cout << t.cols <<":t: "<< t.rows << endl;
 
+
+        t = f2.col(i).clone();
+        t *= 1-scale;
+        t.copyTo(f2.col(i));
+    }
+    cout << f1.cols <<":f1:" << f1.rows<< endl;
+    //roi2(Rect(Point(0, 0), Point(dx, roi2.rows))) *= 0.5;
+    //roi2(Rect(Point(0, 0), Point(dx, roi2.rows))) +=
+    //   roi1(Rect(Point(roi1.cols - abs(dx), 0), Point(roi1.cols, roi1.rows))) * 0.5;
+    Mat overlap = f1 + f2;
+    cout<< overlap.cols << "ov "<< overlap.rows<<endl;
+    //imshow("overlap", overlap);
+    //roi2(Rect(Point(0, 0), Point(dx, roi2.rows))) = overlap/2+f2/2;
+
+    // define the size of result
+    int nrow = orig1.rows - abs(dy);
+    int ncol = orig1.cols + orig2.cols -dx;
+
+    Mat newimg(nrow, ncol, orig1.type());
     // 将roi1, roi2 合并到newimg
+    roi2.copyTo(newimg(Rect(Point(roi1.cols-dx, 0),
+            Point(roi1.cols + roi2.cols - dx, roi2.rows))));
     roi1.copyTo(newimg(Rect(Point(0, 0), Point(roi1.cols, roi1.rows))));
-    roi2.copyTo(newimg(Rect(Point(roi1.cols - abs(dx) , 0),
-            Point(roi1.cols + roi2.cols - abs(dx), roi2.rows))));
-    imshow("1", orig1);
-    imshow("2", orig2);
+    overlap.copyTo(newimg(Rect(Point(roi1.cols-dx,0),Point(roi1.cols, roi1.rows))));
+
+    imshow("1", roi1);
+    imshow("2", roi2);
     imshow("new", newimg);
 
     // Mat img_match;
